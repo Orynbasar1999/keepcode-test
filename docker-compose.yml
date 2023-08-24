@@ -1,0 +1,47 @@
+version: '3.7'
+services:
+  keepcode-nginx:
+    image: nginx:latest
+    container_name: keepcode-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/:/etc/nginx/conf.d/
+      - ./:/var/www/keepcode
+  keepcode-php:
+    build: docker/php
+    container_name: keepcode-php
+    working_dir: /var/www/keepcode
+    volumes:
+      - ./:/var/www/keepcode
+      - dbSocket:/var/run/mysqld/
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/40-custom.ini
+    links:
+      - keepcode-db
+      - keepcode-nginx:keepcode.local
+    external_links:
+      - keepcode-nginx:keepcode.local
+  keepcode-db:
+    build: docker/mysql
+    container_name: keepcode-db
+    cap_add:
+      - ALL
+    restart: on-failure
+    environment:
+      MYSQL_DATABASE: keepcode
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: mega-admin-php
+      MYSQL_PASSWORD: megaman
+    volumes:
+      - mysqlData:/var/lib/mysql
+      - ./docker/mysql/config:/etc/mysql/conf.d/source/
+      - dbSocket:/var/run/mysqld/
+      - ./docker/mysql/config/dump.sql:/docker-entrypoint-initdb.d/dump.sql
+  keepcode-adminer:
+    image: adminer:fastcgi
+    container_name: keepcode-adminer
+    links:
+      - keepcode-db
+volumes:
+  mysqlData:
+  dbSocket:
